@@ -35,13 +35,17 @@ func (c *Config) CreateServer() (*smtp.Server, error) {
 
 	var tlsConfig *tls.Config
 
+	s.AllowInsecureAuth = true
+
 	if c.CertFile != "" && c.KeyFile != "" {
-		var err error
-		tlsConfig.Certificates = make([]tls.Certificate, 1)
-		tlsConfig.Certificates[0], err = tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
+		tlsConfig = &tls.Config{}
+		cert, err := tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
+		tlsConfig.Certificates = append(tlsConfig.Certificates, cert)
 		if err != nil {
 			return nil, err
 		}
+		s.TLSConfig = tlsConfig
+		s.AllowInsecureAuth = c.AllowInsecureAuth
 	}
 
 	s.Addr = c.Addr
@@ -50,12 +54,6 @@ func (c *Config) CreateServer() (*smtp.Server, error) {
 	s.WriteTimeout = c.WriteTimeout
 	s.MaxMessageBytes = c.MaxMessageBytes
 	s.MaxRecipients = c.MaxRecipients
-
-	if tlsConfig == nil {
-		s.AllowInsecureAuth = true
-	} else {
-		s.AllowInsecureAuth = c.AllowInsecureAuth
-	}
 
 	return s, nil
 }
