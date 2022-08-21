@@ -1,68 +1,77 @@
 package main
 
 import (
-	"io"
-	"io/ioutil"
+	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/emersion/go-smtp"
+	"github.com/manyou-io/smtp-post/server"
+	"github.com/spf13/cobra"
 )
 
-// The Backend implements SMTP server methods.
-type Backend struct{}
+var config *server.Config
+var listenTls bool
 
-func (b *Backend) Login(_ *smtp.ConnectionState, _, _ string) (smtp.Session, error) {
-	return &Session{}, nil
+var rootCmd = &cobra.Command{
+	Use:   "smtp-post",
+	Short: "Receive mail with SMTP and relay with HTTP",
 }
 
-func (b *Backend) AnonymousLogin(_ *smtp.ConnectionState) (smtp.Session, error) {
-	return nil, smtp.ErrAuthRequired
+var runCmd = &cobra.Command{
+	Use:              "run [endpoint]",
+	Short:            "Start the SMTP server",
+	TraverseChildren: true,
+	Args:             cobra.MinimumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		config.Endpoint = args[0]
+
+		s, err := config.CreateServer()
+		if err != nil {
+			log.Fatal(err)
+			os.Exit(1)
+		}
+
+		log.Printf("server started on %s for %s\n", config.Addr, config.Domain)
+		if err := listenAndServe(s); err != nil {
+			log.Fatal(err)
+			os.Exit(1)
+		}
+	},
 }
 
-// A Session is returned after EHLO.
-type Session struct{}
-
-func (s *Session) Mail(from string, opts smtp.MailOptions) error {
-	log.Println("Mail from:", from)
-	return nil
-}
-
-func (s *Session) Rcpt(to string) error {
-	log.Println("Rcpt to:", to)
-	return nil
-}
-
-func (s *Session) Data(r io.Reader) error {
-	if b, err := ioutil.ReadAll(r); err != nil {
-		return err
+func listenAndServe(s *smtp.Server) error {
+	if listenTls {
+		return s.ListenAndServeTLS()
 	} else {
-		log.Println("Data:", string(b))
+		return s.ListenAndServe()
 	}
-	return nil
 }
 
-func (s *Session) Reset() {}
-
-func (s *Session) Logout() error {
-	return nil
+func init() {
+	rootCmd.AddCommand(runCmd)
+	config = &server.Config{}
+	runCmd.Flags().StringVarP(&config.Addr, "bind", "b", ":1025", "host and port to listen on. For example: \":587\" or \"127.0.0.1:25\"")
+	runCmd.Flags().StringVarP(&config.Domain, "domain", "d", "localhost", "hostname for greeting")
+	runCmd.Flags().DurationVar(&config.ReadTimeout, "read-timeout", 10*time.Second, "read timeout in seconds")
+	runCmd.Flags().DurationVar(&config.WriteTimeout, "write-timeout", 10*time.Second, "write timeout in seconds")
+	runCmd.Flags().IntVar(&config.MaxMessageBytes, "max-size", 5*1024*1024, "maximum message size in bytes. Note that AWS Lambda has a 5MB payload size limit.")
+	runCmd.Flags().IntVar(&config.MaxRecipients, "max-rcpt", 14, "maximum number of recipients per message")
+	runCmd.Flags().StringVar(&config.CertFile, "tls-cert", "", "X509 certificate file for TLS")
+	runCmd.Flags().StringVar(&config.KeyFile, "tls-key", "", "private key file for TLS")
+	runCmd.Flags().StringVarP(&config.ApiKey, "api-key", "k", "", "value of X-Api-Key header")
+	runCmd.Flags().StringVarP(&config.Username, "username", "u", "smtp-post", "username for SMTP authentication")
+	runCmd.Flags().StringVarP(&config.Password, "password", "p", "smtp-post", "password for SMTP authentication")
+	runCmd.Flags().BoolVar(&listenTls, "tls", false, "listen with TLS wrapper")
+	runCmd.Flags().BoolVar(&config.AllowInsecureAuth, "allow-insecure-auth", false, "allow insecure authentication even if TLS is enabled")
+	runCmd.MarkFlagsRequiredTogether("username", "password")
+	runCmd.MarkFlagsRequiredTogether("tls-cert", "tls-key")
 }
 
 func main() {
-	be := &Backend{}
-
-	s := smtp.NewServer(be)
-
-	s.Addr = ":1025"
-	s.Domain = "localhost"
-	s.ReadTimeout = 10 * time.Second
-	s.WriteTimeout = 10 * time.Second
-	s.MaxMessageBytes = 1024 * 1024
-	s.MaxRecipients = 50
-	s.AllowInsecureAuth = true
-
-	log.Println("Starting server at", s.Addr)
-	if err := s.ListenAndServe(); err != nil {
-		log.Fatal(err)
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
