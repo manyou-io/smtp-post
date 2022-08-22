@@ -66,7 +66,7 @@ func (s *Session) Data(r io.Reader) error {
 	s.log(res.Status)
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return fmt.Errorf("unexpected response status: %d", res.StatusCode)
+		return fmt.Errorf("unexpected response status: %s", res.Status)
 	}
 
 	return nil
