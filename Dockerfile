@@ -11,7 +11,7 @@ RUN set -ex; \
     go mod download; \
     go mod verify; \
     go build -ldflags='-s -w' -o smtp-post; \
-    upx --brute smtp-post
+    upx --lzma smtp-post
 
 FROM scratch
 
