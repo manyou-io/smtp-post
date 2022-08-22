@@ -13,7 +13,7 @@ RUN set -ex; \
     go build -ldflags='-s -w' -o smtp-post; \
     upx --lzma smtp-post
 
-FROM alpine:3.16
+FROM busybox:1.34.1
 
 ENV SMTP_POST_DOMAIN="smtp-post" \
     SMTP_POST_BIND=":587" \
