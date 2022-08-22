@@ -17,8 +17,8 @@ FROM scratch
 
 ENV SMTP_POST_DOMAIN="smtp-post" \
     SMTP_POST_BIND=":587" \
-    SMTP_POST_READ_TIMEOUT="10" \
-    SMTP_POST_WRITE_TIMEOUT="10" \
+    SMTP_POST_READ_TIMEOUT="10s" \
+    SMTP_POST_WRITE_TIMEOUT="10s" \
     SMTP_POST_MAX_RCPT="14" \
     SMTP_POST_MAX_SIZE="5242880" \
     SMTP_POST_API_KEY="smtp-post" \
@@ -30,4 +30,4 @@ ENV SMTP_POST_DOMAIN="smtp-post" \
 
 COPY --from=builder /usr/src/app/smtp-post /usr/bin/
 
-CMD ["/usr/bin/smtp-post", "run", "--domain", "$SMTP_POST_DOMAIN", "--bind", "$SMTP_POST_BIND", "--read-timeout", "$SMTP_POST_READ_TIMEOUT", "--write-timeout", "$SMTP_POST_WRITE_TIMEOUT", "--max-rcpt", "$SMTP_POST_MAX_RCPT", "--max-size", "$SMTP_POST_MAX_SIZE", "--api-key", "$SMTP_POST_API_KEY", "--username", "$SMTP_POST_USERNAME", "--password", "$SMTP_POST_PASSWORD", "--endpoint", "$SMTP_POST_ENDPOINT", "--tls-cert", "$SMTP_POST_TLS_CERT", "--tls-key", "$SMTP_POST_TLS_KEY"]
+CMD ["/usr/bin/smtp-post", "run", "$SMTP_POST_ENDPOINT", "--domain", "$SMTP_POST_DOMAIN", "--bind", "$SMTP_POST_BIND", "--read-timeout", "$SMTP_POST_READ_TIMEOUT", "--write-timeout", "$SMTP_POST_WRITE_TIMEOUT", "--max-rcpt", "$SMTP_POST_MAX_RCPT", "--max-size", "$SMTP_POST_MAX_SIZE", "--api-key", "$SMTP_POST_API_KEY", "--username", "$SMTP_POST_USERNAME", "--password", "$SMTP_POST_PASSWORD", "--tls-cert", "$SMTP_POST_TLS_CERT", "--tls-key", "$SMTP_POST_TLS_KEY"]
