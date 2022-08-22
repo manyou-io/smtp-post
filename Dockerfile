@@ -1,11 +1,13 @@
 FROM golang:1.19.0-alpine3.16 as builder
 
+ENV CGO_ENABLED=0
+
 WORKDIR /usr/src/app
 COPY . ./
 
 RUN set -ex; \
     apk update; \
-    apk add upx git; \
+    apk add upx; \
     go mod download; \
     go mod verify; \
     go build -ldflags='-s -w' -o smtp-post; \
